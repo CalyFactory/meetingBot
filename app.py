@@ -101,7 +101,7 @@ if slackClient.rtm_connect():
                             bookEndTime = parameters['date-period']
                         bookRoomNo = parameters['roomnum']
                         
-                        speech = "예약" + bookDate + " " + bookStartTime + " " + bookEndTime + " " + bookRoomNo
+                        speech = "예약" + bookDate + " " + bookStartTime + " " + bookEndTime + " " + bookRoomNo + "(개발중)"
                     elif intentName == "inquiry":
                         inquiryDate = parameters['date']
                         speech = loadRoom(inquiryDate)
@@ -109,7 +109,9 @@ if slackClient.rtm_connect():
                     slackClient.api_call(
                         "chat.postMessage",
                         channel=data['channel'],
-                        text=speech
+                        text=speech,
+                        username='hotsan', 
+                        icon_emoji=':robot_face:'
                     )
                     print(text)
 
