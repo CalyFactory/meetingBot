@@ -2,6 +2,9 @@ from slackclient import SlackClient
 import json
 import requests
 import time
+from datetime import datetime, timedelta
+from datetime import date
+import re
 
 with open('key.json') as json_data:
     d = json.load(json_data)
@@ -9,6 +12,11 @@ with open('key.json') as json_data:
     ai_token = d['ai_token']
 
 print("start")
+
+    
+def getdate(dateString):
+    dateObject = datetime.strptime(dateString, "Date(%Y,%m,%d,%H,%M,%S)")
+    return dateObject.strftime("%H:%M")
 
 def requestNlp(query):
     result = requests.get(
@@ -26,6 +34,37 @@ def requestNlp(query):
     )
     print(result.text)
     return result.json()
+
+def loadRoom(date):
+
+    nine_hours_from_now = datetime.now() + timedelta(hours=9)
+    todayString = nine_hours_from_now.strftime("%Y-%m-%d")
+
+    url = "http://115.68.116.16/swmaestro/admin/getData1.php?dt="+date
+    r = requests.get(url).json()
+
+    roomData = {}
+    for row in r['rows']:
+        if bool(re.match("\d회의실",row['c'][0]['v'])):
+            if row['c'][1]['v'] != "": 
+                stTime = getdate(row['c'][2]['v'])
+                edTime = getdate(row['c'][3]['v'])
+                roomNum = row['c'][0]['v'] 
+                manName = row['c'][1]['v']
+
+                schedule = [manName, stTime, edTime]
+
+                if roomNum not in roomData:
+                    roomData[roomNum] = []
+                roomData[roomNum].append(schedule)
+
+    result = "*<" + date + " 회의실 예약내역>*\n"
+    for row in roomData:
+        string = row + " : " 
+        for row2 in roomData[row]:
+            string = string + row2[1] + "~" + row2[2] + "(" + row2[0] + ") "
+        result += string+"\n"
+    return result 
 
 slackClient = SlackClient(bot_token)
 #curl 'https://api.api.ai/api/query?v=20150910&query=%EC%95%88%EB%85%95&lang=ko&sessionId=4147bc78-87f6-407d-84f5-ef63a0c4c596&timezone=2017-01-18T14:31:34+0900' -H 'Authorization:Bearer 78e4f20c78c240eca6527b6fe31cbbcf'
@@ -65,7 +104,7 @@ if slackClient.rtm_connect():
                         speech = "예약" + bookDate + " " + bookStartTime + " " + bookEndTime + " " + bookRoomNo
                     elif intentName == "inquiry":
                         inquiryDate = parameters['date']
-                        speech = "조회" + inquiryDate
+                        speech = loadRoom(inquiryDate)
 
                     slackClient.api_call(
                         "chat.postMessage",
