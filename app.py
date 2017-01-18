@@ -28,23 +28,12 @@ def requestNlp(query):
     return result.json()
 
 slackClient = SlackClient(bot_token)
+#curl 'https://api.api.ai/api/query?v=20150910&query=%EC%95%88%EB%85%95&lang=ko&sessionId=4147bc78-87f6-407d-84f5-ef63a0c4c596&timezone=2017-01-18T14:31:34+0900' -H 'Authorization:Bearer 78e4f20c78c240eca6527b6fe31cbbcf'
 
-
-data = slackClient.api_call(
-    "users.info",
-    bot="hotsan"
-)
-
-print(data)
 print("try connect")
 if slackClient.rtm_connect():
     print("connected")
 
-    slackClient.api_call(
-        "chat.postMessage",
-        channel="#testbed",
-        text="Hello from Python! :tada:"
-    )
     while True:
         response = slackClient.rtm_read()
         if len(response) == 0:  
@@ -59,10 +48,29 @@ if slackClient.rtm_connect():
                     text = text.replace("<@U3GUQSAR3>","").strip()
 
                     responseJson = requestNlp(text)
+
+                    intentName = responseJson['result']['metadata']['intentName']
+                    speech = responseJson['result']['fulfillment']['messages'][0]['speech']
+                    parameters = responseJson['result']['parameters']
+                    if intentName == "book":
+                        bookDate = parameters['date']
+                        if parameters['date-period'] == "":
+                            bookStartTime = parameters['time-period']
+                            bookEndTime = parameters['time-period']
+                        else:
+                            bookStartTime = parameters['date-period']
+                            bookEndTime = parameters['date-period']
+                        bookRoomNo = parameters['roomnum']
+                        
+                        speech = "예약" + bookDate + " " + bookStartTime + " " + bookEndTime + " " + bookRoomNo
+                    elif intentName == "inquiry":
+                        inquiryDate = parameters['date']
+                        speech = "조회" + inquiryDate
+
                     slackClient.api_call(
                         "chat.postMessage",
                         channel=data['channel'],
-                        text=responseJson['result']['fulfillment']['messages'][0]['speech']
+                        text=speech
                     )
                     print(text)
 
